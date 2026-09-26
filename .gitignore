@@ -1,0 +1,12 @@
+.env
+
+bin/
+tmp/
+*.log
+
+.vscode/
+.idea/
+
+coverage.out
+
+node_modules/
