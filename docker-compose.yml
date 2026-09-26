@@ -1,16 +1,26 @@
 services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: h-lab-frontend
+    ports:
+      - "5173:5173"
+    depends_on:
+      - app
+
   app:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: h-lab-test
-    restart: unless-stopped
+    container_name: h-lab-backend
     ports:
       - "8080:8080"
     env_file:
       - .env
     depends_on:
-      - mariadb
+      mariadb:
+        condition: service_healthy
 
   mariadb:
     image: mariadb:11
@@ -25,6 +35,11 @@ services:
       - "3307:3306"
     volumes:
       - mariadb_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mariadb-admin ping -h localhost -u root -p$${MARIADB_ROOT_PASSWORD} --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
 volumes:
   mariadb_data:

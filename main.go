@@ -13,9 +13,7 @@ import (
 func main() {
 
 	// Load .env
-	if err := godotenv.Load(); err != nil {
-		log.Fatal("Error loading .env:", err)
-	}
+	godotenv.Load()
 
 	// เชื่อมต่อ Database และทำ Migration
 	database.Connect()
