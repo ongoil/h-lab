@@ -1,0 +1,30 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: h-lab-test
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    depends_on:
+      - mariadb
+
+  mariadb:
+    image: mariadb:11
+    container_name: h-lab-mariadb
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: hlab-test
+      MARIADB_USER: hlabtest
+      MARIADB_PASSWORD: hlab1234
+      MARIADB_ROOT_PASSWORD: root1234
+    ports:
+      - "3307:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+
+volumes:
+  mariadb_data:
