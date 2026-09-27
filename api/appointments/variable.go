@@ -1,8 +1,6 @@
 package appointments
 
 import (
-	"time"
-
 	uuid "github.com/google/uuid"
 )
 
@@ -13,13 +11,13 @@ const (
 )
 
 type appointmentRequest struct {
-	PatientID         uuid.UUID `json:"patient_id"`
-	DoctorID          uuid.UUID `json:"doctor_id"`
-	DepartmentID      uuid.UUID `json:"department_id"`
-	AppointmentTypeID uuid.UUID `json:"appointment_type_id"`
-
-	AppointmentDate time.Time `json:"appointment_date"`
+	PatientID       uuid.UUID `json:"patient_id"`
+	DoctorID        uuid.UUID `json:"doctor_id"`
+	DepartmentID    uuid.UUID `json:"department_id"`
+	AppointmentType string    `json:"appointment_type"`
+	AppointmentDate string    `json:"appointment_date"`
 	StartTime       string    `json:"start_time"`
+	EndTime         string    `json:"end_time"`
 	Reason          string    `json:"reason"`
 	CreatedBy       string    `json:"created_by"`
 }

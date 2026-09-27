@@ -4,6 +4,7 @@ import (
 	"h-lab/database"
 	"h-lab/dto"
 	"h-lab/models"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/labstack/gommon/log"
@@ -82,5 +83,40 @@ func CreateDoctor(c *fiber.Ctx) error {
 		Status:    "200",
 		Message:   "Success",
 		MessageTh: "สำเร็จ",
+	})
+}
+
+func GetDoctor(c *fiber.Ctx) error {
+	search := strings.TrimSpace(c.Query("search"))
+
+	baseQuery := database.DBConn.Model(&models.Doctor{})
+	if search != "" {
+		// searchWithoutSpaces := strings.ReplaceAll(search, " ", "")
+		baseQuery = baseQuery.Where(`INSTR(REPLACE(CONCAT_WS('|',first_name,last_name ), ' ', ''), ?)`, search)
+	}
+
+	var department []models.Doctor
+	if err := baseQuery.Find(&department).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.Response{
+			Status:    "500",
+			Message:   "failed to get doctor",
+			MessageTh: "ข้อผิดพลาดภายในเซิร์ฟเวอร์",
+			Error:     err.Error(),
+		})
+	}
+
+	// var reponse []models.Doctor
+	// for _, res := range department {
+	// 	reponse = append(reponse, responseDoctor{
+	// 		TitleName: res.TitleName,
+	// 		FirstName: res.FirstName,
+	// 		LastName:  res.LastName,
+	// 	})
+	// }
+	return c.Status(fiber.StatusOK).JSON(dto.Response{
+		Status:    "200",
+		Message:   "Success",
+		MessageTh: "สำเร็จ",
+		Data:      department,
 	})
 }

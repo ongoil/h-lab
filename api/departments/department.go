@@ -12,7 +12,7 @@ import (
 )
 
 func CreateDepartment(c *fiber.Ctx) error {
-	var req []departmentRequest
+	var req departmentRequest
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(dto.Response{
 			Status:    "400",
@@ -28,38 +28,36 @@ func CreateDepartment(c *fiber.Ctx) error {
 		}
 	}()
 
-	for _, v := range req {
-		if v.ENGName == "" {
-			return c.Status(fiber.StatusBadRequest).JSON(dto.Response{
-				Status:    "400",
-				Message:   "invalid request eng_name",
-				MessageTh: "กรุณาระบุชื่อภาษาอังกฤษ",
-			})
-		}
+	if req.ENGName == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.Response{
+			Status:    "400",
+			Message:   "invalid request eng_name",
+			MessageTh: "กรุณาระบุชื่อภาษาอังกฤษ",
+		})
+	}
 
-		if v.THName == "" {
-			return c.Status(fiber.StatusBadRequest).JSON(dto.Response{
-				Status:    "400",
-				Message:   "invalid request th_name",
-				MessageTh: "กรุณาระบุชื่อภาษาไทย",
-			})
-		}
+	if req.THName == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(dto.Response{
+			Status:    "400",
+			Message:   "invalid request th_name",
+			MessageTh: "กรุณาระบุชื่อภาษาไทย",
+		})
+	}
 
-		department := models.Department{
-			ENGName: v.ENGName,
-			THName:  v.THName,
-		}
+	department := models.Department{
+		ENGName: req.ENGName,
+		THName:  req.THName,
+	}
 
-		if err := tx.Create(&department).Error; err != nil {
-			tx.Rollback()
-			log.Error(c, "500 | Internal Server Error : failed to create department -> ", err, logrus.Fields{"department": v.ENGName})
-			return c.Status(fiber.StatusInternalServerError).JSON(dto.Response{
-				Status:    "500",
-				Message:   "failed to create department",
-				MessageTh: "ไม่สามารถสร้างข้อมูลแผนได้",
-				Error:     err.Error(),
-			})
-		}
+	if err := tx.Create(&department).Error; err != nil {
+		tx.Rollback()
+		log.Error(c, "500 | Internal Server Error : failed to create department -> ", err, logrus.Fields{"department": req.ENGName})
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.Response{
+			Status:    "500",
+			Message:   "failed to create department",
+			MessageTh: "ไม่สามารถสร้างข้อมูลแผนได้",
+			Error:     err.Error(),
+		})
 	}
 
 	//Commit transaction
@@ -89,7 +87,7 @@ func GetDepartment(c *fiber.Ctx) error {
 		baseQuery = baseQuery.Where(`INSTR(REPLACE(CONCAT_WS('|',eng_name,th_name ), ' ', ''), ?)`, search)
 	}
 
-	var department []reponseDepartment
+	var department []models.Department
 	if err := baseQuery.Find(&department).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(dto.Response{
 			Status:    "500",
@@ -99,17 +97,10 @@ func GetDepartment(c *fiber.Ctx) error {
 		})
 	}
 
-	var reponse []reponseDepartment
-	for _, res := range department {
-		reponse = append(reponse, reponseDepartment{
-			ENGName: res.ENGName,
-			THName:  res.THName,
-		})
-	}
 	return c.Status(fiber.StatusOK).JSON(dto.Response{
 		Status:    "200",
 		Message:   "Success",
 		MessageTh: "สำเร็จ",
-		Data:      reponse,
+		Data:      department,
 	})
 }

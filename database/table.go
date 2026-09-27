@@ -12,6 +12,7 @@ func DataBaseMigration(db *gorm.DB) error {
 		&models.Department{},
 		&models.DoctorSchedule{},
 		&models.Patient{},
+		&models.Appointment{},
 	)
 	if err != nil {
 		return err

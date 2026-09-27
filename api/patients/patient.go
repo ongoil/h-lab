@@ -1,9 +1,12 @@
 package patients
 
 import (
+	"fmt"
 	"h-lab/database"
 	"h-lab/dto"
 	"h-lab/models"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -16,15 +19,6 @@ func CreatePatient(c *fiber.Ctx) error {
 			Status:    "400",
 			Message:   "Invalid request body",
 			MessageTh: "ข้อมูลที่ส่งมาไม่ถูกต้อง",
-		})
-	}
-
-	// Validate required fields
-	if req.PatientNo == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(dto.Response{
-			Status:    "400",
-			Message:   "Patient number is required",
-			MessageTh: "กรุณาระบุเลขประจำตัวผู้ป่วย",
 		})
 	}
 
@@ -52,23 +46,6 @@ func CreatePatient(c *fiber.Ctx) error {
 		})
 	}
 
-	// Validate date of birth
-	if req.DateOfBirth.IsZero() {
-		return c.Status(fiber.StatusBadRequest).JSON(dto.Response{
-			Status:    "400",
-			Message:   "Date of birth is required",
-			MessageTh: "กรุณาระบุวันเกิด",
-		})
-	}
-
-	if req.DateOfBirth.After(time.Now()) {
-		return c.Status(fiber.StatusBadRequest).JSON(dto.Response{
-			Status:    "400",
-			Message:   "Date of birth cannot be in the future",
-			MessageTh: "วันเกิดไม่สามารถเป็นวันที่ในอนาคตได้",
-		})
-	}
-
 	// Start transaction
 	tx := database.DBConn.Begin()
 	defer func() {
@@ -79,7 +56,6 @@ func CreatePatient(c *fiber.Ctx) error {
 
 	// Check duplicate PatientNo
 	var existingPatient models.Patient
-
 	if err := tx.Where("patient_no = ?", req.PatientNo).First(&existingPatient).Error; err == nil {
 		tx.Rollback()
 		return c.Status(fiber.StatusConflict).JSON(dto.Response{
@@ -89,13 +65,35 @@ func CreatePatient(c *fiber.Ctx) error {
 		})
 	}
 
+	// Generate Patient No: HN + year + running number
+	year := time.Now().Year()
+	prefix := fmt.Sprintf("HN%d", year)
+	var lastPatient models.Patient
+	err := tx.Where("patient_no LIKE ?", prefix+"%").Order("patient_no DESC").First(&lastPatient).Error
+	nextNo := 1
+	if err == nil {
+		lastNo, err := strconv.Atoi(lastPatient.PatientNo[len(prefix):])
+		if err != nil {
+			tx.Rollback()
+			return c.Status(fiber.StatusInternalServerError).JSON(dto.Response{
+				Status:    "500",
+				Message:   "Failed to generate patient number",
+				MessageTh: "ไม่สามารถสร้างเลขประจำตัวผู้ป่วยได้",
+				Error:     err.Error(),
+			})
+		}
+		nextNo = lastNo + 1
+	}
+
+	patientNo := fmt.Sprintf("%s%04d", prefix, nextNo)
+	dateOfBirth, err := time.Parse("2006-01-02", req.DateOfBirth)
 	// Create patient
 	patient := models.Patient{
-		PatientNo:   req.PatientNo,
+		PatientNo:   patientNo,
 		TitleName:   req.TitleName,
 		FirstName:   req.FirstName,
 		LastName:    req.LastName,
-		DateOfBirth: req.DateOfBirth,
+		DateOfBirth: dateOfBirth,
 	}
 
 	if err := tx.Create(&patient).Error; err != nil {
@@ -123,6 +121,33 @@ func CreatePatient(c *fiber.Ctx) error {
 		Status:    "201",
 		Message:   "Patient created successfully",
 		MessageTh: "สร้างข้อมูลผู้ป่วยสำเร็จ",
+		Data:      patient,
+	})
+}
+
+func GetPatient(c *fiber.Ctx) error {
+	search := strings.TrimSpace(c.Query("search"))
+
+	baseQuery := database.DBConn.Model(&models.Patient{})
+	if search != "" {
+		// searchWithoutSpaces := strings.ReplaceAll(search, " ", "")
+		baseQuery = baseQuery.Where(`INSTR(REPLACE(CONCAT_WS('|',patient_no,first_name,last_name ), ' ', ''), ?)`, search)
+	}
+
+	var patient []models.Patient
+	if err := baseQuery.Find(&patient).Error; err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(dto.Response{
+			Status:    "500",
+			Message:   "failed to get patient",
+			MessageTh: "ข้อผิดพลาดภายในเซิร์ฟเวอร์",
+			Error:     err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(dto.Response{
+		Status:    "200",
+		Message:   "Success",
+		MessageTh: "สำเร็จ",
 		Data:      patient,
 	})
 }

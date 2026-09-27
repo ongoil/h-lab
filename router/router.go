@@ -16,6 +16,7 @@ func SetRouter(app *fiber.FiberApp) {
 
 	doctor := v1.Group("/doctors")
 	doctor.Post("/create", doctors.CreateDoctor)
+	doctor.Get("/show", doctors.GetDoctor)
 
 	department := v1.Group("/departments")
 	department.Post("/create", departments.CreateDepartment)
@@ -23,11 +24,15 @@ func SetRouter(app *fiber.FiberApp) {
 
 	schedule := v1.Group("/schedules")
 	schedule.Post("/create", schedules.CreateSchedules)
+	schedule.Get("/show", schedules.GetDoctorSchedules)
+	schedule.Delete("/delete", schedules.DeleteSchedules)
 
 	appointment := v1.Group("/appointments")
 	appointment.Post("/create", appointments.CreateAppointment)
+	appointment.Get("/show", appointments.GetAppointment)
 
 	patient := v1.Group("/patients")
 	patient.Post("/create", patients.CreatePatient)
+	patient.Get("/show", patients.GetPatient)
 
 }
